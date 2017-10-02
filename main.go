@@ -23,6 +23,7 @@ const (
 var (
 	verifyKey *rsa.PublicKey
 	signKey   *rsa.PrivateKey
+	users     []User
 )
 
 func fatal(err error) {
@@ -52,9 +53,17 @@ type UserCredentials struct {
 
 type User struct {
 	ID       int    `json:"id"`
-	Name     string `json:"name"`
 	Username string `json:"username"`
-	Password string `json:"password"`
+	Alias    string `json:"alias"`
+	Email    string `json:"email"`
+	IsAdmin  bool   `json:"isadmin"`
+}
+
+type DataAdmin struct {
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Task     string `json:"task"`
+	IsOnline bool   `json:"isonline"`
 }
 
 type Response struct {
@@ -63,6 +72,15 @@ type Response struct {
 
 type Token struct {
 	Token string `json:"token"`
+}
+
+func InitUsersData() {
+	juang := User{101, "juang", "juangnakarani", "juang@gmail.com", false}
+	users = append(users, juang)
+	anu := User{102, "anu", "mrxx", "anu@gmail.com", true}
+	users = append(users, anu)
+	ani := User{103, "ana", "blackiron", "ani@gmail.com", false}
+	users = append(users, ani)
 }
 
 func StartServer() {
@@ -76,14 +94,20 @@ func StartServer() {
 		negroni.Wrap(http.HandlerFunc(ProtectedHandler)),
 	))
 
+	http.Handle("/admin", negroni.New(
+		negroni.HandlerFunc(ValidateTokenMiddleware),
+		negroni.Wrap(http.HandlerFunc(ProtectedAdminPanel)),
+	))
+
 	log.Println("Now listening...")
 	http.ListenAndServe(":8080", nil)
 }
 
 func main() {
-
+	InitUsersData()
 	initKeys()
 	StartServer()
+
 }
 
 func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
@@ -91,6 +115,12 @@ func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 	response := Response{"Gained access to protected resource"}
 	JsonResponse(response, w)
 
+}
+
+func ProtectedAdminPanel(w http.ResponseWriter, r *http.Request) {
+	// response := DataAdmin{1001, "Juang Nakarani", "Database Administrator", false}
+	fmt.Println(users)
+	JsonResponse(users, w)
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
