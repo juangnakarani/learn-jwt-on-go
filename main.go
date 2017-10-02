@@ -71,10 +71,13 @@ type Response struct {
 }
 
 type Token struct {
-	Token string `json:"token"`
+	Token    string `json:"token"`
+	UserData User   `json:"userdata"`
 }
 
 func InitUsersData() {
+	admin := User{100, "admin", "ngadimin", "admin@gmail.com", false}
+	users = append(users, admin)
 	juang := User{101, "juang", "juangnakarani", "juang@gmail.com", false}
 	users = append(users, juang)
 	anu := User{102, "anu", "mrxx", "anu@gmail.com", true}
@@ -163,8 +166,13 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Error while signing the token")
 		fatal(err)
 	}
-
-	response := Token{tokenString}
+	var userdata User
+	for _, userx := range users {
+		if userx.Username == user.Username {
+			userdata = userx
+		}
+	}
+	response := Token{tokenString, userdata}
 	JsonResponse(response, w)
 
 }
