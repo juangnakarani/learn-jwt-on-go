@@ -1,0 +1,1 @@
+![Cara test dengan postman](./img/gotojwt.gif)
