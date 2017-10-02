@@ -71,8 +71,7 @@ type Response struct {
 }
 
 type Token struct {
-	Token    string `json:"token"`
-	UserData User   `json:"userdata"`
+	Token string `json:"token"`
 }
 
 func InitUsersData() {
@@ -121,9 +120,8 @@ func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ProtectedAdminPanel(w http.ResponseWriter, r *http.Request) {
-	// response := DataAdmin{1001, "Juang Nakarani", "Database Administrator", false}
-	fmt.Println(users)
-	JsonResponse(users, w)
+	response := Response{"Welcome to admin page.."}
+	JsonResponse(response, w)
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -146,11 +144,17 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
+	var userdata User
+	for _, userx := range users {
+		if userx.Username == user.Username {
+			userdata = userx
+		}
+	}
 	token := jwt.New(jwt.SigningMethodRS256)
 	claims := make(jwt.MapClaims)
 	claims["exp"] = time.Now().Add(time.Hour * time.Duration(1)).Unix()
 	claims["iat"] = time.Now().Unix()
+	claims["userdata"] = userdata
 	token.Claims = claims
 
 	if err != nil {
@@ -166,13 +170,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Error while signing the token")
 		fatal(err)
 	}
-	var userdata User
-	for _, userx := range users {
-		if userx.Username == user.Username {
-			userdata = userx
-		}
-	}
-	response := Token{tokenString, userdata}
+
+	response := Token{tokenString}
 	JsonResponse(response, w)
 
 }
@@ -184,6 +183,11 @@ func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 			return verifyKey, nil
 		})
 
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		fmt.Println("test claim- ", claims["userdata"], " -end test claim")
+	} else {
+		fmt.Println(err)
+	}
 	if err == nil {
 		if token.Valid {
 			next(w, r)
