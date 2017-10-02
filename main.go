@@ -99,29 +99,19 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 
-	username := user.Username
-	password := user.Password
-	fmt.Printf("ini user: %s \n", user.Username)
-	fmt.Printf("ini password: %s \n", user.Password)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		fmt.Fprint(w, "Error in request")
 		return
 	}
 
-	if strings.ToLower(username) != "admin" {
-		fmt.Printf("ini user: %s \n", username)
-		if password != "admin" {
-			fmt.Printf("ini password: %s \n", password)
+	if strings.ToLower(user.Username) != "someone" {
+		if user.Password != "admin" {
 			w.WriteHeader(http.StatusForbidden)
 			fmt.Println("Error logging in")
 			fmt.Fprint(w, "Invalid credentials")
 			return
 		}
-	}
-
-	if strings.ToLower(password) != "admin" {
-		fmt.Println("password salah")
 	}
 
 	token := jwt.New(jwt.SigningMethodRS256)
@@ -146,6 +136,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	response := Token{tokenString}
 	JsonResponse(response, w)
+
 }
 
 func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
