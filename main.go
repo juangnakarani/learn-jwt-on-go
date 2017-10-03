@@ -12,6 +12,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
+	"github.com/rs/cors"
 	"github.com/urfave/negroni"
 )
 
@@ -86,23 +87,34 @@ func InitUsersData() {
 }
 
 func StartServer() {
-
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"http://localhost:8080"},
+	})
+	mux := http.NewServeMux()
 	// Non-Protected Endpoint(s)
-	http.HandleFunc("/login", LoginHandler)
+	mux.HandleFunc("/login", LoginHandler)
 
 	// Protected Endpoints
-	http.Handle("/resource", negroni.New(
+	mux.Handle("/resource", negroni.New(
 		negroni.HandlerFunc(ValidateTokenMiddleware),
 		negroni.Wrap(http.HandlerFunc(ProtectedHandler)),
 	))
 
-	http.Handle("/admin", negroni.New(
+	mux.Handle("/admin", negroni.New(
 		negroni.HandlerFunc(ValidateTokenMiddleware),
 		negroni.Wrap(http.HandlerFunc(ProtectedAdminPanel)),
 	))
 
+	mux.HandleFunc("/ngadimin", NgadiminHandler)
+
 	log.Println("Now listening...")
-	http.ListenAndServe(":8090", nil)
+
+	n := negroni.Classic()
+	n.Use(c)
+	n.UseHandler(mux)
+	n.Run(":8090")
+	//http.ListenAndServe(":8090", c.Handler())
+
 }
 
 func main() {
@@ -113,24 +125,50 @@ func main() {
 }
 
 func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
-
+	if origin := r.Header.Get("Origin"); origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		// w.Header().Set("Access-Control-Allow-Headers",
+		// 	"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		// w.Header().Set("Access-Control-Allow-Methods", "POST")
+	}
 	response := Response{"Gained access to protected resource"}
 	JsonResponse(response, w)
 
 }
 
 func ProtectedAdminPanel(w http.ResponseWriter, r *http.Request) {
+	if origin := r.Header.Get("Origin"); origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		// w.Header().Set("Content-Type", "application/json")
+		// w.Header().Set("Access-Control-Allow-Methods", "POST")
+	}
+
+	// }
 	response := Response{"Welcome to admin page.."}
 	JsonResponse(response, w)
 }
 
+// test Access-Control-Allow-Origin
+func NgadiminHandler(w http.ResponseWriter, r *http.Request) {
+	if origin := r.Header.Get("Origin"); origin != "" {
+		log.Println("test print origin->", origin)
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		// w.Header().Set("Access-Control-Allow-Credentials", "true")
+	}
+	response := Response{"Welcome to ngadimin page.."}
+	JsonResponse(response, w)
+}
+
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	if origin := r.Header.Get("Origin"); origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 		w.Header().Set("Access-Control-Allow-Headers",
 			"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Methods", "POST")
 	}
 	var user UserCredentials
 
