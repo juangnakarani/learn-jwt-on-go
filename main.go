@@ -86,10 +86,13 @@ func InitUsersData() {
 	users = append(users, ani)
 }
 
+
+
 func StartServer() {
 	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:8080"},
+		AllowedOrigins: []string{"*"}, 
 	})
+
 	mux := http.NewServeMux()
 	// Non-Protected Endpoint(s)
 	mux.HandleFunc("/login", LoginHandler)
@@ -104,6 +107,10 @@ func StartServer() {
 		negroni.HandlerFunc(ValidateTokenMiddleware),
 		negroni.Wrap(http.HandlerFunc(ProtectedAdminPanel)),
 	))
+	// mux.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
+	// 	w.Header().Set("Content-Type", "application/json")
+	// 	w.Write([]byte("{\"hello\": \"world\"}"))
+	// })
 
 	mux.HandleFunc("/ngadimin", NgadiminHandler)
 
@@ -154,23 +161,33 @@ func NgadiminHandler(w http.ResponseWriter, r *http.Request) {
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if origin := r.Header.Get("Origin"); origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
+		// w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Headers",
 			"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Methods", "POST")
+		// w.Header().Set("Access-Control-Allow-Methods", "POST")
 	}
 	var user UserCredentials
 
 	err := json.NewDecoder(r.Body).Decode(&user)
-
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		fmt.Fprint(w, "Error in request")
 		return
 	}
 
-	if strings.ToLower(user.Username) != "adminx" {
-		if user.Password != "admin" {
+	var usr = user.Username
+	var passwd = user.Password
+
+
+	fmt.Println("json username:", usr)
+	fmt.Println("json password:", passwd)
+
+	fmt.Println("compare username: ", strings.Compare(usr, "adminx"))
+	fmt.Println("compare password: ", strings.Compare(passwd, "admin"))
+
+	if strings.ToLower(usr) != "adminx" {
+		if passwd != "admin" {
 			w.WriteHeader(http.StatusForbidden)
 			fmt.Println("Error logging in")
 			fmt.Fprint(w, "Invalid credentials")
@@ -209,8 +226,30 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+func AllowCORS(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		if origin := r.Header.Get("Origin"); origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+	
+		w.Header().Set(
+			"Access-Control-Allow-Headers",
+			"Accept, Content-Type, Content-Length, Accept-Encoding, Authorization",
+		)
+	}
 
+	// handle preflight request
+	if r.Method == "OPTIONS" {
+		// r.Header.Get("Access-Control-Request-Method") could be PUT, DELETE
+		// but we needs to return what we actually supports to enable browser cache the preflight
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		return
+	}
+ 
+	next(w, r)
+}
+
+func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	
 	token, err := request.ParseFromRequest(r, request.AuthorizationHeaderExtractor,
 		func(token *jwt.Token) (interface{}, error) {
 			return verifyKey, nil
@@ -232,7 +271,7 @@ func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprint(w, "Unauthorized access to this resource")
 	}
-
+	// AllowCORS(w, r, next)
 }
 
 func JsonResponse(response interface{}, w http.ResponseWriter) {
