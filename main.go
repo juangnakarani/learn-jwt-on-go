@@ -117,13 +117,6 @@ func StartServer() {
 
 }
 
-func main() {
-	InitUsersData()
-	initKeys()
-	StartServer()
-
-}
-
 func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 	if origin := r.Header.Get("Origin"); origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
@@ -141,12 +134,8 @@ func ProtectedAdminPanel(w http.ResponseWriter, r *http.Request) {
 	if origin := r.Header.Get("Origin"); origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-
-		// w.Header().Set("Content-Type", "application/json")
-		// w.Header().Set("Access-Control-Allow-Methods", "POST")
+		w.Header().Set("Access-Control-Allow-Methods", "GET")
 	}
-
-	// }
 	response := Response{"Welcome to admin page.."}
 	JsonResponse(response, w)
 }
@@ -180,7 +169,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.ToLower(user.Username) != "someone" {
+	if strings.ToLower(user.Username) != "adminx" {
 		if user.Password != "admin" {
 			w.WriteHeader(http.StatusForbidden)
 			fmt.Println("Error logging in")
@@ -257,4 +246,10 @@ func JsonResponse(response interface{}, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(json)
+}
+
+func main() {
+	InitUsersData()
+	initKeys()
+	StartServer()
 }
