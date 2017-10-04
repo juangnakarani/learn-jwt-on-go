@@ -12,7 +12,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
-	"github.com/rs/cors"
+	// "github.com/rs/cors"
 	"github.com/urfave/negroni"
 )
 
@@ -86,16 +86,16 @@ func InitUsersData() {
 	users = append(users, ani)
 }
 
-
-
 func StartServer() {
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"}, 
-	})
+	// c := cors.New(cors.Options{
+	// 	AllowedOrigins: []string{"*"},
+	// })
 
 	mux := http.NewServeMux()
 	// Non-Protected Endpoint(s)
+	// mux.HandleFunc("/login", LoginHandler)
 	mux.HandleFunc("/login", LoginHandler)
+	
 
 	// Protected Endpoints
 	mux.Handle("/resource", negroni.New(
@@ -103,21 +103,24 @@ func StartServer() {
 		negroni.Wrap(http.HandlerFunc(ProtectedHandler)),
 	))
 
+	// mux.Handle("/admin", negroni.New(
+	// 	negroni.HandlerFunc(AllowCORS),
+	// 	negroni.HandlerFunc(ValidateTokenMiddleware),
+	// 	negroni.Wrap(http.HandlerFunc(ProtectedAdminPanel)),
+	// ))
 	mux.Handle("/admin", negroni.New(
+		negroni.HandlerFunc(AllowCORS),
 		negroni.HandlerFunc(ValidateTokenMiddleware),
 		negroni.Wrap(http.HandlerFunc(ProtectedAdminPanel)),
 	))
-	// mux.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
-	// 	w.Header().Set("Content-Type", "application/json")
-	// 	w.Write([]byte("{\"hello\": \"world\"}"))
-	// })
+
 
 	mux.HandleFunc("/ngadimin", NgadiminHandler)
 
 	log.Println("Now listening...")
 
 	n := negroni.Classic()
-	n.Use(c)
+	// n.Use(c)
 	n.UseHandler(mux)
 	n.Run(":8090")
 	//http.ListenAndServe(":8090", c.Handler())
@@ -159,14 +162,14 @@ func NgadiminHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
-	if origin := r.Header.Get("Origin"); origin != "" {
-		w.Header().Set("Access-Control-Allow-Origin", origin)
-		// w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers",
-			"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-		w.Header().Set("Content-Type", "application/json")
-		// w.Header().Set("Access-Control-Allow-Methods", "POST")
-	}
+	// if origin := r.Header.Get("Origin"); origin != "" {
+	// 	w.Header().Set("Access-Control-Allow-Origin", origin)
+	// 	// w.Header().Set("Access-Control-Allow-Credentials", "true")
+	// 	w.Header().Set("Access-Control-Allow-Headers",
+	// 		"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	// 	w.Header().Set("Content-Type", "application/json")
+	// 	// w.Header().Set("Access-Control-Allow-Methods", "POST")
+	// }
 	var user UserCredentials
 
 	err := json.NewDecoder(r.Body).Decode(&user)
@@ -178,7 +181,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	var usr = user.Username
 	var passwd = user.Password
-
 
 	fmt.Println("json username:", usr)
 	fmt.Println("json password:", passwd)
@@ -227,10 +229,11 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func AllowCORS(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		if origin := r.Header.Get("Origin"); origin != "" {
+	fmt.Println("setting CORS...")
+	if origin := r.Header.Get("Origin"); origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-	
+
 		w.Header().Set(
 			"Access-Control-Allow-Headers",
 			"Accept, Content-Type, Content-Length, Accept-Encoding, Authorization",
@@ -244,12 +247,11 @@ func AllowCORS(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 		return
 	}
- 
 	next(w, r)
 }
 
 func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	
+	fmt.Println("checking token...")
 	token, err := request.ParseFromRequest(r, request.AuthorizationHeaderExtractor,
 		func(token *jwt.Token) (interface{}, error) {
 			return verifyKey, nil
@@ -260,6 +262,7 @@ func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 	} else {
 		fmt.Println(err)
 	}
+
 	if err == nil {
 		if token.Valid {
 			next(w, r)
@@ -271,7 +274,6 @@ func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprint(w, "Unauthorized access to this resource")
 	}
-	// AllowCORS(w, r, next)
 }
 
 func JsonResponse(response interface{}, w http.ResponseWriter) {
