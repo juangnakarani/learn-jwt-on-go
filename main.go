@@ -141,11 +141,30 @@ func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ProtectedAdminPanel(w http.ResponseWriter, r *http.Request) {
+	// if origin := r.Header.Get("Origin"); origin != "" {
+	// 	w.Header().Set("Access-Control-Allow-Origin", origin)
+	// 	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	// 	w.Header().Set("Access-Control-Allow-Methods", "GET")
+	// }
+	fmt.Println("setting CORS...")
 	if origin := r.Header.Get("Origin"); origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Methods", "GET")
+
+		w.Header().Set(
+			"Access-Control-Allow-Headers",
+			"Accept, Content-Type, Content-Length, Accept-Encoding, Authorization",
+		)
 	}
+
+	// handle preflight request
+	if r.Method == "OPTIONS" {
+		// r.Header.Get("Access-Control-Request-Method") could be PUT, DELETE
+		// but we needs to return what we actually supports to enable browser cache the preflight
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		// return
+	}
+
 	response := Response{"Welcome to admin page.."}
 	JsonResponse(response, w)
 }
@@ -170,6 +189,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// 	w.Header().Set("Content-Type", "application/json")
 	// 	// w.Header().Set("Access-Control-Allow-Methods", "POST")
 	// }
+	
 	var user UserCredentials
 
 	err := json.NewDecoder(r.Body).Decode(&user)
@@ -245,7 +265,7 @@ func AllowCORS(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		// r.Header.Get("Access-Control-Request-Method") could be PUT, DELETE
 		// but we needs to return what we actually supports to enable browser cache the preflight
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-		return
+		// return
 	}
 	next(w, r)
 }
@@ -256,12 +276,13 @@ func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 		func(token *jwt.Token) (interface{}, error) {
 			return verifyKey, nil
 		})
-
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		fmt.Println("test claim- ", claims["userdata"], " -end test claim")
-	} else {
-		fmt.Println(err)
-	}
+	
+	// test claim token
+	// if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+	// 	fmt.Println("test claim- ", claims["userdata"], " -end test claim")
+	// } else {
+	// 	fmt.Println(err)
+	// }
 
 	if err == nil {
 		if token.Valid {
@@ -269,10 +290,12 @@ func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
 			fmt.Fprint(w, "Token is not valid")
+			return
 		}
 	} else {
 		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprint(w, "Unauthorized access to this resource")
+		return
 	}
 }
 
