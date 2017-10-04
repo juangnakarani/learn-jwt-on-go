@@ -98,7 +98,6 @@ func StartServer() {
 		negroni.HandlerFunc(AllowCORS),
 		negroni.Wrap(http.HandlerFunc(LoginHandler)),
 	))
-	
 
 	// Protected Endpoints
 	mux.Handle("/resource", negroni.New(
@@ -116,7 +115,6 @@ func StartServer() {
 		negroni.HandlerFunc(ValidateTokenMiddleware),
 		negroni.Wrap(http.HandlerFunc(ProtectedAdminPanel)),
 	))
-
 
 	mux.HandleFunc("/ngadimin", NgadiminHandler)
 
@@ -145,8 +143,10 @@ func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 
 func ProtectedAdminPanel(w http.ResponseWriter, r *http.Request) {
 	// w.Header().Set("Access-Control-Allow-Methods", "POST")
-		response := Response{"Welcome to admin page.."}
-		JsonResponse(response, w)
+	// code := &r.Response.StatusCode
+	// fmt.Println("ini code", code)
+	response := Response{"Welcome to admin page.."}
+	JsonResponse(response, w)
 }
 
 // test Access-Control-Allow-Origin
@@ -162,69 +162,69 @@ func NgadiminHandler(w http.ResponseWriter, r *http.Request) {
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// if r.Method == "POST" {
-		fmt.Println("yuk login...")
-		var user UserCredentials
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
-		err := json.NewDecoder(r.Body).Decode(&user)
-		if err != nil {
-			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprint(w, "Error in request")
-			return
-		}
-		fmt.Println("yuk username password ...")
-		var usr = user.Username
-		var passwd = user.Password
+	fmt.Println("yuk login...")
+	var user UserCredentials
+	// w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprint(w, "Error in request")
+		return
+	}
+	fmt.Println("yuk username password ...")
+	var usr = user.Username
+	var passwd = user.Password
 
-		fmt.Println("json username:", usr)
-		fmt.Println("json password:", passwd)
+	fmt.Println("json username:", usr)
+	fmt.Println("json password:", passwd)
 
-		fmt.Println("compare username: ", strings.Compare(usr, "admin"))
-		fmt.Println("compare password: ", strings.Compare(passwd, "admin"))
+	fmt.Println("compare username: ", strings.Compare(usr, "admin"))
+	fmt.Println("compare password: ", strings.Compare(passwd, "admin"))
 
-		if strings.ToLower(usr) == "admin" {
-			if passwd == "admin" {
-				var userdata User
-				for _, userx := range users {
-					if userx.Username == user.Username {
-						userdata = userx
-					}
+	if strings.ToLower(usr) == "admin" {
+		if passwd == "admin" {
+			var userdata User
+			for _, userx := range users {
+				if userx.Username == user.Username {
+					userdata = userx
 				}
-				token := jwt.New(jwt.SigningMethodRS256)
-				claims := make(jwt.MapClaims)
-				claims["exp"] = time.Now().Add(time.Hour * time.Duration(1)).Unix()
-				claims["iat"] = time.Now().Unix()
-				claims["userdata"] = userdata
-				token.Claims = claims
-		
-				if err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					fmt.Fprintln(w, "Error extracting the key")
-					fatal(err)
-				}
-		
-				tokenString, err := token.SignedString(signKey)
-		
-				if err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					fmt.Fprintln(w, "Error while signing the token")
-					fatal(err)
-				}
-		
-				response := Token{tokenString}
-				JsonResponse(response, w)
-			}else{
-				w.WriteHeader(http.StatusForbidden)
-				fmt.Println("Error logging in")
-				fmt.Fprint(w, "Invalid credentials")
-				return
 			}
-		}else{
+			token := jwt.New(jwt.SigningMethodRS256)
+			claims := make(jwt.MapClaims)
+			claims["exp"] = time.Now().Add(time.Hour * time.Duration(1)).Unix()
+			claims["iat"] = time.Now().Unix()
+			claims["userdata"] = userdata
+			token.Claims = claims
+
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintln(w, "Error extracting the key")
+				fatal(err)
+			}
+
+			tokenString, err := token.SignedString(signKey)
+
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintln(w, "Error while signing the token")
+				fatal(err)
+			}
+
+			response := Token{tokenString}
+			JsonResponse(response, w)
+		} else {
 			w.WriteHeader(http.StatusForbidden)
 			fmt.Println("Error logging in")
 			fmt.Fprint(w, "Invalid credentials")
 			return
 		}
-	
+	} else {
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Println("Error logging in")
+		fmt.Fprint(w, "Invalid credentials")
+		return
+	}
+
 	// }else {
 	// 	w.WriteHeader(http.StatusMethodNotAllowed)
 	// }
@@ -236,27 +236,28 @@ func AllowCORS(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	if origin := r.Header.Get("Origin"); origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Methods", "POST")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set(
+			"Access-Control-Allow-Headers",
+			"Accept, Content-Type, Content-Length, Accept-Encoding, Authorization",
+		)
 	}
 
 	// handle preflight request
 	if r.Method == "OPTIONS" {
 		// r.Header.Get("Access-Control-Request-Method") could be PUT, DELETE
 		// but we needs to return what we actually supports to enable browser cache the preflight
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, OPTIONS")
-		w.Header().Set(
-			"Access-Control-Allow-Headers",
-			"Accept, Content-Type, Content-Length, Accept-Encoding, Authorization",
-		)
-		w.WriteHeader(http.StatusAccepted)
-		// return
+		// w.Header().Set("Cache-Control", "no-cache")
+
+		// w.WriteHeader(http.StatusAccepted)
+		return
 	}
 	next(w, r)
 }
 
 func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	fmt.Println("checking token...")
+	// w.WriteHeader(http.StatusAccepted)
 	token, err := request.ParseFromRequest(r, request.AuthorizationHeaderExtractor,
 		func(token *jwt.Token) (interface{}, error) {
 			return verifyKey, nil
@@ -272,7 +273,7 @@ func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 				fmt.Println(err)
 			}
 			// w.WriteHeader(http.StatusOK)
-			w.WriteHeader(http.StatusAccepted)
+			// w.WriteHeader(http.StatusOK)
 			next(w, r)
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -294,7 +295,7 @@ func JsonResponse(response interface{}, w http.ResponseWriter) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(json)
