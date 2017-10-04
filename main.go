@@ -94,7 +94,10 @@ func StartServer() {
 	mux := http.NewServeMux()
 	// Non-Protected Endpoint(s)
 	// mux.HandleFunc("/login", LoginHandler)
-	mux.HandleFunc("/login", LoginHandler)
+	mux.Handle("/login", negroni.New(
+		negroni.HandlerFunc(AllowCORS),
+		negroni.Wrap(http.HandlerFunc(LoginHandler)),
+	))
 	
 
 	// Protected Endpoints
@@ -141,32 +144,13 @@ func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ProtectedAdminPanel(w http.ResponseWriter, r *http.Request) {
-	// if origin := r.Header.Get("Origin"); origin != "" {
-	// 	w.Header().Set("Access-Control-Allow-Origin", origin)
-	// 	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	// 	w.Header().Set("Access-Control-Allow-Methods", "GET")
-	// }
-	fmt.Println("setting CORS...")
-	if origin := r.Header.Get("Origin"); origin != "" {
-		w.Header().Set("Access-Control-Allow-Origin", origin)
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
-
-		w.Header().Set(
-			"Access-Control-Allow-Headers",
-			"Accept, Content-Type, Content-Length, Accept-Encoding, Authorization",
-		)
+	// w.Header().Set("Access-Control-Allow-Methods", "POST")
+	if r.Method == "POST" {
+		response := Response{"Welcome to admin page.."}
+		JsonResponse(response, w)
+	}else{
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
-
-	// handle preflight request
-	if r.Method == "OPTIONS" {
-		// r.Header.Get("Access-Control-Request-Method") could be PUT, DELETE
-		// but we needs to return what we actually supports to enable browser cache the preflight
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-		// return
-	}
-
-	response := Response{"Welcome to admin page.."}
-	JsonResponse(response, w)
 }
 
 // test Access-Control-Allow-Origin
@@ -181,70 +165,73 @@ func NgadiminHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
-	// if origin := r.Header.Get("Origin"); origin != "" {
-	// 	w.Header().Set("Access-Control-Allow-Origin", origin)
-	// 	// w.Header().Set("Access-Control-Allow-Credentials", "true")
-	// 	w.Header().Set("Access-Control-Allow-Headers",
-	// 		"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-	// 	w.Header().Set("Content-Type", "application/json")
-	// 	// w.Header().Set("Access-Control-Allow-Methods", "POST")
-	// }
-	
-	var user UserCredentials
+	// if r.Method == "POST" {
+		fmt.Println("yuk login...")
+		var user UserCredentials
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
+		err := json.NewDecoder(r.Body).Decode(&user)
+		if err != nil {
+			w.WriteHeader(http.StatusForbidden)
+			fmt.Fprint(w, "Error in request")
+			return
+		}
+		fmt.Println("yuk username password ...")
+		var usr = user.Username
+		var passwd = user.Password
 
-	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
-		w.WriteHeader(http.StatusForbidden)
-		fmt.Fprint(w, "Error in request")
-		return
-	}
+		fmt.Println("json username:", usr)
+		fmt.Println("json password:", passwd)
 
-	var usr = user.Username
-	var passwd = user.Password
+		fmt.Println("compare username: ", strings.Compare(usr, "adminx"))
+		fmt.Println("compare password: ", strings.Compare(passwd, "admin"))
 
-	fmt.Println("json username:", usr)
-	fmt.Println("json password:", passwd)
-
-	fmt.Println("compare username: ", strings.Compare(usr, "adminx"))
-	fmt.Println("compare password: ", strings.Compare(passwd, "admin"))
-
-	if strings.ToLower(usr) != "adminx" {
-		if passwd != "admin" {
+		if strings.ToLower(usr) == "admin" {
+			if passwd == "admin" {
+				var userdata User
+				for _, userx := range users {
+					if userx.Username == user.Username {
+						userdata = userx
+					}
+				}
+				token := jwt.New(jwt.SigningMethodRS256)
+				claims := make(jwt.MapClaims)
+				claims["exp"] = time.Now().Add(time.Hour * time.Duration(1)).Unix()
+				claims["iat"] = time.Now().Unix()
+				claims["userdata"] = userdata
+				token.Claims = claims
+		
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					fmt.Fprintln(w, "Error extracting the key")
+					fatal(err)
+				}
+		
+				tokenString, err := token.SignedString(signKey)
+		
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					fmt.Fprintln(w, "Error while signing the token")
+					fatal(err)
+				}
+		
+				response := Token{tokenString}
+				JsonResponse(response, w)
+			}else{
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Println("Error logging in")
+				fmt.Fprint(w, "Invalid credentials")
+				return
+			}
+		}else{
 			w.WriteHeader(http.StatusForbidden)
 			fmt.Println("Error logging in")
 			fmt.Fprint(w, "Invalid credentials")
 			return
 		}
-	}
-	var userdata User
-	for _, userx := range users {
-		if userx.Username == user.Username {
-			userdata = userx
-		}
-	}
-	token := jwt.New(jwt.SigningMethodRS256)
-	claims := make(jwt.MapClaims)
-	claims["exp"] = time.Now().Add(time.Hour * time.Duration(1)).Unix()
-	claims["iat"] = time.Now().Unix()
-	claims["userdata"] = userdata
-	token.Claims = claims
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintln(w, "Error extracting the key")
-		fatal(err)
-	}
-
-	tokenString, err := token.SignedString(signKey)
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintln(w, "Error while signing the token")
-		fatal(err)
-	}
-
-	response := Token{tokenString}
-	JsonResponse(response, w)
+	
+	// }else {
+	// 	w.WriteHeader(http.StatusMethodNotAllowed)
+	// }
 
 }
 
@@ -271,21 +258,22 @@ func AllowCORS(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 }
 
 func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	if r.Method == "POST" {
 	fmt.Println("checking token...")
 	token, err := request.ParseFromRequest(r, request.AuthorizationHeaderExtractor,
 		func(token *jwt.Token) (interface{}, error) {
 			return verifyKey, nil
 		})
-	
-	// test claim token
-	// if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-	// 	fmt.Println("test claim- ", claims["userdata"], " -end test claim")
-	// } else {
-	// 	fmt.Println(err)
-	// }
 
 	if err == nil {
 		if token.Valid {
+			fmt.Println("token valid...")
+			// test claim token
+			if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+				fmt.Println("test claim- ", claims["userdata"], " -end test claim")
+			} else {
+				fmt.Println(err)
+			}
 			next(w, r)
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -294,9 +282,13 @@ func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 		}
 	} else {
 		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Println("ini err != nil")
 		fmt.Fprint(w, "Unauthorized access to this resource")
 		return
 	}
+}else{
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
 }
 
 func JsonResponse(response interface{}, w http.ResponseWriter) {
@@ -306,7 +298,7 @@ func JsonResponse(response interface{}, w http.ResponseWriter) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(json)
