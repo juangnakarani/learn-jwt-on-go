@@ -145,12 +145,8 @@ func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
 
 func ProtectedAdminPanel(w http.ResponseWriter, r *http.Request) {
 	// w.Header().Set("Access-Control-Allow-Methods", "POST")
-	if r.Method == "POST" {
 		response := Response{"Welcome to admin page.."}
 		JsonResponse(response, w)
-	}else{
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
 }
 
 // test Access-Control-Allow-Origin
@@ -182,7 +178,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("json username:", usr)
 		fmt.Println("json password:", passwd)
 
-		fmt.Println("compare username: ", strings.Compare(usr, "adminx"))
+		fmt.Println("compare username: ", strings.Compare(usr, "admin"))
 		fmt.Println("compare password: ", strings.Compare(passwd, "admin"))
 
 		if strings.ToLower(usr) == "admin" {
@@ -240,25 +236,26 @@ func AllowCORS(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	if origin := r.Header.Get("Origin"); origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-
-		w.Header().Set(
-			"Access-Control-Allow-Headers",
-			"Accept, Content-Type, Content-Length, Accept-Encoding, Authorization",
-		)
+		w.Header().Set("Access-Control-Allow-Methods", "POST")
 	}
 
 	// handle preflight request
 	if r.Method == "OPTIONS" {
 		// r.Header.Get("Access-Control-Request-Method") could be PUT, DELETE
 		// but we needs to return what we actually supports to enable browser cache the preflight
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, OPTIONS")
+		w.Header().Set(
+			"Access-Control-Allow-Headers",
+			"Accept, Content-Type, Content-Length, Accept-Encoding, Authorization",
+		)
+		w.WriteHeader(http.StatusAccepted)
 		// return
 	}
 	next(w, r)
 }
 
 func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	if r.Method == "POST" {
 	fmt.Println("checking token...")
 	token, err := request.ParseFromRequest(r, request.AuthorizationHeaderExtractor,
 		func(token *jwt.Token) (interface{}, error) {
@@ -274,6 +271,8 @@ func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 			} else {
 				fmt.Println(err)
 			}
+			// w.WriteHeader(http.StatusOK)
+			w.WriteHeader(http.StatusAccepted)
 			next(w, r)
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -286,9 +285,6 @@ func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 		fmt.Fprint(w, "Unauthorized access to this resource")
 		return
 	}
-}else{
-	w.WriteHeader(http.StatusMethodNotAllowed)
-}
 }
 
 func JsonResponse(response interface{}, w http.ResponseWriter) {
