@@ -12,8 +12,8 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
-	// "github.com/rs/cors"
 	"github.com/urfave/negroni"
+	"gotojwt/gotodb"
 )
 
 const (
@@ -87,13 +87,8 @@ func InitUsersData() {
 }
 
 func StartServer() {
-	// c := cors.New(cors.Options{
-	// 	AllowedOrigins: []string{"*"},
-	// })
-
 	mux := http.NewServeMux()
 	// Non-Protected Endpoint(s)
-	// mux.HandleFunc("/login", LoginHandler)
 	mux.Handle("/login", negroni.New(
 		negroni.HandlerFunc(AllowCORS),
 		negroni.Wrap(http.HandlerFunc(LoginHandler)),
@@ -105,11 +100,6 @@ func StartServer() {
 		negroni.Wrap(http.HandlerFunc(ProtectedHandler)),
 	))
 
-	// mux.Handle("/admin", negroni.New(
-	// 	negroni.HandlerFunc(AllowCORS),
-	// 	negroni.HandlerFunc(ValidateTokenMiddleware),
-	// 	negroni.Wrap(http.HandlerFunc(ProtectedAdminPanel)),
-	// ))
 	mux.Handle("/admin", negroni.New(
 		negroni.HandlerFunc(AllowCORS),
 		negroni.HandlerFunc(ValidateTokenMiddleware),
@@ -129,22 +119,12 @@ func StartServer() {
 }
 
 func ProtectedHandler(w http.ResponseWriter, r *http.Request) {
-	if origin := r.Header.Get("Origin"); origin != "" {
-		w.Header().Set("Access-Control-Allow-Origin", origin)
-		// w.Header().Set("Access-Control-Allow-Headers",
-		// 	"Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-		w.Header().Set("Content-Type", "application/json")
-		// w.Header().Set("Access-Control-Allow-Methods", "POST")
-	}
 	response := Response{"Gained access to protected resource"}
 	JsonResponse(response, w)
 
 }
 
 func ProtectedAdminPanel(w http.ResponseWriter, r *http.Request) {
-	// w.Header().Set("Access-Control-Allow-Methods", "POST")
-	// code := &r.Response.StatusCode
-	// fmt.Println("ini code", code)
 	response := Response{"Welcome to admin page.."}
 	JsonResponse(response, w)
 }
@@ -161,6 +141,7 @@ func NgadiminHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
+	_ = "breakpoint"
 	// if r.Method == "POST" {
 	fmt.Println("yuk login...")
 	var user UserCredentials
@@ -236,7 +217,7 @@ func AllowCORS(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	if origin := r.Header.Get("Origin"); origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE")
 		w.Header().Set(
 			"Access-Control-Allow-Headers",
 			"Accept, Content-Type, Content-Length, Accept-Encoding, Authorization",
@@ -244,12 +225,8 @@ func AllowCORS(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	}
 
 	// handle preflight request
+	// jika methodnya options biarlah saat ini dia berlalu :)
 	if r.Method == "OPTIONS" {
-		// r.Header.Get("Access-Control-Request-Method") could be PUT, DELETE
-		// but we needs to return what we actually supports to enable browser cache the preflight
-		// w.Header().Set("Cache-Control", "no-cache")
-
-		// w.WriteHeader(http.StatusAccepted)
 		return
 	}
 	next(w, r)
@@ -272,8 +249,6 @@ func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 			} else {
 				fmt.Println(err)
 			}
-			// w.WriteHeader(http.StatusOK)
-			// w.WriteHeader(http.StatusOK)
 			next(w, r)
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -289,7 +264,6 @@ func ValidateTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 }
 
 func JsonResponse(response interface{}, w http.ResponseWriter) {
-
 	json, err := json.Marshal(response)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -302,6 +276,7 @@ func JsonResponse(response interface{}, w http.ResponseWriter) {
 }
 
 func main() {
+	gotodb.Testpf()
 	InitUsersData()
 	initKeys()
 	StartServer()
