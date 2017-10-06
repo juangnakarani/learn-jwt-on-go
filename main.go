@@ -13,7 +13,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
 	"github.com/urfave/negroni"
-	"gotojwt/gotodb"
+	"gotojwt/gobase"
 )
 
 const (
@@ -276,7 +276,7 @@ func JsonResponse(response interface{}, w http.ResponseWriter) {
 }
 
 func main() {
-	gotodb.Testpf()
+	gobase.Testpf()
 	InitUsersData()
 	initKeys()
 	StartServer()
