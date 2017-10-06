@@ -4,7 +4,6 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"gotojwt/gobase"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -130,7 +129,6 @@ func NgadiminHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
-	_ = "breakpoint"
 	// if r.Method == "POST" {
 	fmt.Println("yuk login...")
 	var user UserCredentials
@@ -265,21 +263,6 @@ func JsonResponse(response interface{}, w http.ResponseWriter) {
 }
 
 func main() {
-	//gobase.Testpf()
-	users, err := gobase.GetUsers()
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Print(users)
-	for _, user := range users {
-		fmt.Println(user.Username)
-	}
-	// login, err := gobase.Login("admin", "admin")
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// fmt.Print(login)
-
 	initKeys()
 	StartServer()
 }
