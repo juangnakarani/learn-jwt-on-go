@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"gotojwt/gobase"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -13,7 +14,6 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
 	"github.com/urfave/negroni"
-	"gotojwt/gobase"
 )
 
 const (
@@ -73,17 +73,6 @@ type Response struct {
 
 type Token struct {
 	Token string `json:"token"`
-}
-
-func InitUsersData() {
-	admin := User{100, "admin", "ngadimin", "admin@gmail.com", false}
-	users = append(users, admin)
-	juang := User{101, "juang", "juangnakarani", "juang@gmail.com", false}
-	users = append(users, juang)
-	anu := User{102, "anu", "mrxx", "anu@gmail.com", true}
-	users = append(users, anu)
-	ani := User{103, "ana", "blackiron", "ani@gmail.com", false}
-	users = append(users, ani)
 }
 
 func StartServer() {
@@ -276,8 +265,21 @@ func JsonResponse(response interface{}, w http.ResponseWriter) {
 }
 
 func main() {
-	gobase.Testpf()
-	InitUsersData()
+	//gobase.Testpf()
+	users, err := gobase.GetUsers()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Print(users)
+	for _, user := range users {
+		fmt.Println(user.Username)
+	}
+	// login, err := gobase.Login("admin", "admin")
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// fmt.Print(login)
+
 	initKeys()
 	StartServer()
 }

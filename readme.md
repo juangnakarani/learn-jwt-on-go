@@ -13,7 +13,9 @@ func New(handlers ...Handler) *Negroni {
 postgres=#
 `create user gopher with password 'gopass';`
 `create database gobasedb owner gopher;`
+
 atau:
+
 ```sql
 CREATE DATABASE gobasedb
   WITH OWNER = gopher
